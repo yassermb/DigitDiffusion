@@ -17,6 +17,7 @@ import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 import config
 from diffusion import DiffusionSchedule
@@ -241,11 +242,14 @@ def main():
 
     # ── Training ────────────────────────────────────────────────────────────
     best_val_loss = float("inf")
+    train_losses = []
+    val_losses = []
 
     for epoch in range(1, config.NUM_EPOCHS + 1):
         train_loss = train_one_epoch(model, optimizer, schedule,
                                       train_loader, device,
                                       ema=ema, scheduler=scheduler)
+        train_losses.append(train_loss)
 
         writer.add_scalar("Loss/train", train_loss, epoch)
         writer.add_scalar("LR", optimizer.param_groups[0]["lr"], epoch)
@@ -254,6 +258,7 @@ def main():
         # Validation (using EMA model for consistency with sampling)
         if epoch % config.VALIDATE_EVERY == 0:
             val_loss = validate(ema.shadow, schedule, val_loader, device)
+            val_losses.append(val_loss)
             writer.add_scalar("Loss/val", val_loss, epoch)
             print(f"  val_loss={val_loss:.6f}", end="")
 
@@ -274,6 +279,34 @@ def main():
             # Save to disk
             from torchvision.utils import save_image
             save_image(grid, os.path.join(config.SAMPLE_DIR, f"epoch_{epoch:03d}.png"))
+
+
+    # ── Plot training curves ─────────────────────────────────────────────────
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    
+    epochs = range(1, len(train_losses) + 1)
+    
+    # Loss curves
+    ax1.plot(epochs, train_losses, 'b-', label='Train Loss', linewidth=2)
+    ax1.plot(epochs, val_losses, 'r-', label='Val Loss', linewidth=2)
+    ax1.set_xlabel('Epoch', fontsize=12)
+    ax1.set_ylabel('MSE Loss', fontsize=12)
+    ax1.set_title('Training & Validation Loss', fontsize=14)
+    ax1.legend(fontsize=12)
+    ax1.grid(True, alpha=0.3)
+    
+    # Zoomed in (skip epoch 1)
+    ax2.plot(epochs[1:], train_losses[1:], 'b-', label='Train Loss', linewidth=2)
+    ax2.plot(epochs[1:], val_losses[1:], 'r-', label='Val Loss', linewidth=2)
+    ax2.set_xlabel('Epoch', fontsize=12)
+    ax2.set_ylabel('MSE Loss', fontsize=12)
+    ax2.set_title('Loss (zoomed, epoch 2+)', fontsize=14)
+    ax2.legend(fontsize=12)
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig('results/training_curves.png', dpi=150, bbox_inches='tight')
+    print("Loss curves saved to results/training_curves.png")
 
     # ── Test ────────────────────────────────────────────────────────────────
     print("\n── Testing ──")
