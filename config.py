@@ -15,8 +15,8 @@ RESULTS_DIR = os.path.join(PROJECT_DIR, "results")
 
 # ─── Diffusion hyper-parameters ────────────────────────────────────────────────
 T = 1000                    # total diffusion time-steps
-BETA_START = 1e-4           # β_1
-BETA_END = 0.02             # β_T
+BETA_START = 1e-4           # beta_1
+BETA_END = 0.02             # beta_T
 BETA_SCHEDULE = "cosine"    # "linear" or "cosine"  (cosine → better quality)
 
 # ─── Model hyper-parameters ────────────────────────────────────────────────────

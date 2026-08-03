@@ -1,13 +1,5 @@
 """
 Noise schedules and forward-process utilities for DDPM.
-
-Implements:
-  q(x_t | x_0) = N(x_t ; √ᾱ_t · x_0 , (1-ᾱ_t) · I)
-
-where:
-  β_t   = variance schedule
-  α_t   = 1 - β_t
-  ᾱ_t   = ∏_{s=1}^{t} α_s
 """
 
 import torch
@@ -15,7 +7,7 @@ import numpy as np
 
 
 def linear_beta_schedule(T: int, beta_start: float = 1e-4, beta_end: float = 0.02):
-    """Linear schedule from β_start to β_end over T steps."""
+    """Linear schedule from beta_start to beta_end over T steps."""
     return torch.linspace(beta_start, beta_end, T, dtype=torch.float64)
 
 
@@ -35,7 +27,7 @@ def cosine_beta_schedule(T: int, s: float = 0.008):
 class DiffusionSchedule:
     """
     Pre-computes and stores all the diffusion constants needed for the
-    forward process q(x_t | x_0) and the reverse process p_θ(x_{t-1} | x_t).
+    forward process q(x_t | x_0) and the reverse process p_theta(x_{t-1} | x_t).
     """
 
     def __init__(self, T: int = 1000, beta_start: float = 1e-4,
@@ -59,9 +51,9 @@ class DiffusionSchedule:
                                          alphas_cumprod[:-1]])
 
         # Store everything as float32 tensors on the target device
-        self.betas = betas.float().to(device)                       # β_t
-        self.alphas = alphas.float().to(device)                     # α_t
-        self.alphas_cumprod = alphas_cumprod.float().to(device)     # ᾱ_t
+        self.betas = betas.float().to(device)                       # beta_t
+        self.alphas = alphas.float().to(device)                     # alpha_t
+        self.alphas_cumprod = alphas_cumprod.float().to(device)     # alphabar_t
         self.alphas_cumprod_prev = alphas_cumprod_prev.float().to(device)
 
         # Quantities needed for q(x_t | x_0)
@@ -95,8 +87,6 @@ class DiffusionSchedule:
                  noise: torch.Tensor = None):
         """
         Forward diffusion: sample x_t from q(x_t | x_0).
-
-        x_t = √ᾱ_t · x_0  +  √(1-ᾱ_t) · ε ,   ε ~ N(0, I)
         """
         if noise is None:
             noise = torch.randn_like(x_0)

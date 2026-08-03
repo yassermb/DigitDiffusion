@@ -2,10 +2,10 @@
 Training, validation, testing, and sampling for DDPM on MNIST.
 
 Training objective (simplified DDPM loss):
-    L_simple = E_{t, x_0, ε} [ ‖ ε − ε_θ(x_t, t) ‖² ]
+    L_simple = E_{t, x_0, epsilon} [ | epsilon − epsilon_theta(x_t, t) |^2 ]
 
 Sampling (reverse process):
-    x_{t-1} = (1/√α_t) · ( x_t − (β_t / √(1-ᾱ_t)) · ε_θ(x_t, t) ) + σ_t · z
+    x_{t-1} = (1/alpha^0.5_t) · ( x_t − (beta_t / (1-alphabar_t)^0.5) · epsilon_theta(x_t, t) ) + sigma_t * z
     where z ~ N(0, I) for t > 1, and z = 0 for t = 1.
 """
 
@@ -57,7 +57,7 @@ def sample(model: nn.Module, schedule: DiffusionSchedule,
     Algorithm 2 from the paper:
         for t = T, T-1, …, 1:
             z ~ N(0, I) if t > 1 else z = 0
-            x_{t-1} = (1/√α_t)(x_t − (β_t/√(1-ᾱ_t)) ε_θ(x_t,t)) + σ_t z
+            x_{t-1} = (1/alpha_t^0.5)(x_t − (beta_t/(1-alphabar_t)^0.5) epsilon_theta(x_t,t)) + sigma_t z
     """
     model.eval()
     img = torch.randn(n_samples, config.IN_CHANNELS,
@@ -71,7 +71,7 @@ def sample(model: nn.Module, schedule: DiffusionSchedule,
         alpha_bar = schedule.alphas_cumprod[t]
         beta = schedule.betas[t]
 
-        # Mean of p_θ(x_{t-1} | x_t)
+        # Mean of p_theta(x_{t-1} | x_t)
         mean = (1.0 / torch.sqrt(alpha)) * (
             img - (beta / torch.sqrt(1.0 - alpha_bar)) * predicted_noise
         )
@@ -100,19 +100,19 @@ def train_one_epoch(model, optimizer, schedule, dataloader, device,
         batch_images = batch_images.to(device)
         B = batch_images.shape[0]
 
-        # Sample random time-steps uniformly: t ~ Uniform({0, …, T-1})
+        # Sample random time-steps uniformly: t ~ Uniform({0, ..., T-1})
         t = torch.randint(0, schedule.T, (B,), device=device, dtype=torch.long)
 
-        # Sample noise ε ~ N(0, I)
+        # Sample noise epsilon ~ N(0, I)
         noise = torch.randn_like(batch_images)
 
-        # Forward diffusion: x_t = √ᾱ_t x_0 + √(1-ᾱ_t) ε
+        # Forward diffusion: x_t = alphabar_t^0.5*x_0 + (1-alphabar_t)^0.5*epsilon
         x_t = schedule.q_sample(batch_images, t, noise)
 
         # Predict the noise
         predicted_noise = model(x_t, t)
 
-        # Simple MSE loss: ‖ε − ε_θ(x_t, t)‖²
+        # Simple MSE loss: |epsilon − epsilon_theta(x_t, t)|^2
         loss = nn.functional.mse_loss(predicted_noise, noise)
 
         optimizer.zero_grad()
@@ -266,7 +266,7 @@ def main():
                 best_val_loss = val_loss
                 _save_checkpoint(model, optimizer, ema, epoch, val_loss,
                                  os.path.join(config.CHECKPOINT_DIR, "best.pt"))
-                print("  ★ best", end="")
+                print("  * best", end="")
 
         print()
 

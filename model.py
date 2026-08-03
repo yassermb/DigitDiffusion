@@ -1,13 +1,11 @@
 """
-U-Net architecture for DDPM on MNIST (28×28 grayscale).
+U-Net architecture for DDPM on MNIST (28*28 grayscale).
+- Learned MLP time-embedding
+- Residual blocks with GroupNorm + SiLU + Dropout
+- Down-sampling with strided convolution, up-sampling with nearest + conv
+- Skip connections between encoder and decoder (classic U-Net)
 
-Key design choices — purely convolutional, no attention or Transformer components:
-  • Learned MLP time-embedding (simple normalise-and-project approach)
-  • Residual blocks with GroupNorm + SiLU + Dropout
-  • Down-sampling with strided convolution, up-sampling with nearest + conv
-  • Skip connections between encoder and decoder (classic U-Net)
-
-The network predicts the noise ε_θ(x_t, t) added during the forward process.
+The network predicts the noise epsilon_theta(x_t, t) added during the forward process.
 """
 
 import torch
@@ -21,12 +19,10 @@ class LearnedTimeEmbedding(nn.Module):
     """
     Simple learned time embedding using a small MLP.
 
-    Maps integer timestep t ∈ {0, …, T-1} to a dim-dimensional vector:
-      1. Normalize  t  →  t / T  ∈ [0, 1]
-      2. Project through a 2-layer MLP: Linear(1 → dim) → SiLU → Linear(dim → dim)
-
-    This is a purely learned mapping — no special mathematical formulas,
-    just standard neural-network layers that learn to represent time.
+    Maps integer timestep t in {0, …, T-1} to a dim-dimensional vector:
+      1. Normalize  t  to  t / T  in [0, 1]
+      2. Project through a 2-layer MLP: Linear(1 to dim) to SiLU to Linear(dim to dim)
+    This is a purely learned mapping: just standard neural-network layers that learn to represent time.
     """
 
     def __init__(self, dim: int, max_timesteps: int = 1000):
@@ -49,8 +45,7 @@ class LearnedTimeEmbedding(nn.Module):
 class ResidualBlock(nn.Module):
     """
     Two-conv residual block with time-conditioning:
-
-        h = GroupNorm → SiLU → Conv → + time_mlp(t) → GroupNorm → SiLU → Dropout → Conv
+        h = GroupNorm to SiLU to Conv to + time_mlp(t) to GroupNorm to SiLU to Dropout to Conv
         out = h + skip(x)
     """
 
@@ -67,7 +62,7 @@ class ResidualBlock(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.conv2 = nn.Conv2d(out_ch, out_ch, 3, padding=1)
 
-        # Skip connection (1×1 conv if channels change)
+        # Skip connection (1*1 conv if channels change)
         self.skip = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
 
     def forward(self, x, t_emb):
@@ -103,21 +98,19 @@ class Upsample(nn.Module):
 
 class UNet(nn.Module):
     """
-    U-Net noise-prediction network ε_θ(x_t, t).
+    U-Net noise-prediction network epsilon_theta(x_t, t).
 
-    Purely convolutional architecture — no attention, no Transformer components.
-
-    Architecture (for MNIST 28×28, model_channels=128):
-      Time embedding: Learned MLP  (normalise t → 4-layer MLP → dim)
+    Architecture (for MNIST 28*28, model_channels=128):
+      Time embedding: Learned MLP  (normalise t to 4-layer MLP to dim)
       Encoder:
-        28×28 → [ResBlock×2 @ 128] → Downsample → 14×14
-        14×14 → [ResBlock×2 @ 256] → Downsample → 7×7
+        28*28 to [ResBlock*2 @ 128] to Downsample to 14*14
+        14*14 to [ResBlock*2 @ 256] to Downsample to 7*7
       Bottleneck:
-        7×7   → [ResBlock×2 @ 512]
+        7*7   to [ResBlock*2 @ 512]
       Decoder (mirror of encoder, with skip connections):
-        7×7   → Upsample → 14×14 → [ResBlock×3 @ 256]
-        14×14 → Upsample → 28×28 → [ResBlock×3 @ 128]
-      Output: GroupNorm → SiLU → 1×1 conv → 1 channel
+        7*7   to Upsample to 14*14 to [ResBlock*3 @ 256]
+        14*14 to Upsample to 28*28 to [ResBlock*3 @ 128]
+      Output: GroupNorm to SiLU to 1*1 conv to 1 channel
     """
 
     def __init__(self, in_channels: int = 1, model_channels: int = 64,
@@ -126,7 +119,7 @@ class UNet(nn.Module):
         super().__init__()
 
         # ── Time embedding MLP ──────────────────────────────────────────────
-        # Learned projection: normalise t → [0,1], then 4-layer MLP
+        # Learned projection: normalise t to [0,1], then 4-layer MLP
         self.time_embed = nn.Sequential(
             LearnedTimeEmbedding(time_emb_dim),
             nn.Linear(time_emb_dim, time_emb_dim),
@@ -190,7 +183,7 @@ class UNet(nn.Module):
             t: (B,) integer time-steps
 
         Returns:
-            (B, C, H, W) predicted noise ε_θ
+            (B, C, H, W) predicted noise epsilon_theta
         """
         t_emb = self.time_embed(t)       # (B, time_emb_dim)
         x = self.init_conv(x)            # (B, model_ch, H, W)
