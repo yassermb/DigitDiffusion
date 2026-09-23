@@ -63,7 +63,7 @@ The model is a U-Net that predicts the noise $\varepsilon_\theta(x_t, t)$ added 
 
 Given a clean data (*e.g.* image) $x_0$, we define a <font color="green">**Markov chain**</font> that adds Gaussian noise over $T$ steps:
 
-$$q(x_t \mid x_{t-1}) = \mathcal{N}\!\left(x_t;\; \sqrt{1 - \beta_t}\, x_{t-1},\; \beta_t\, \mathbf{I}\right)$$
+$$q(x_t \mid x_{t-1}) = \mathcal{N}\left(x_t; \sqrt{1 - \beta_t}x_{t-1}, \beta_t\mathbf{I}\right)$$
 
 where $\beta_1, \beta_2, \ldots, \beta_T$ is a <font color="green">**variance schedule**</font> (small positive values that increase over time).
 
@@ -78,7 +78,7 @@ $$x_t = \sqrt{\bar{\alpha}_t}\, x_0 + \sqrt{1 - \bar{\alpha}_t}\, \varepsilon, \
 
 We want to learn the <font color="#3E74D1">**approximate reverse process**</font>: given $x_t$, recover $x_{t-1}$.
 
-$$p_\theta(x_{t-1} \mid x_t) = \mathcal{N}\!\left(x_{t-1};\; \mu_\theta(x_t, t),\; \sigma_t^2\, \mathbf{I}\right)$$
+$$p_\theta(x_{t-1} \mid x_t) = \mathcal{N}\left(x_{t-1}; \mu_\theta(x_t, t), \sigma_t^2\mathbf{I}\right)$$
 
 This is <font color="#3E74D1">**approximate posterior**</font> which wants to be as similar as possible to the <font color="#FFBD16">**true posterior (true reverse process)**</font>:
 
@@ -92,7 +92,7 @@ $$
 
 As we saw in the course, the optimal mean is:
 
-$$\mu_\theta(x_t, t) = \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}}\, \varepsilon_\theta(x_t, t) \right)$$
+$$\mu_\theta(x_t, t) = \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}}\varepsilon_\theta(x_t, t) \right)$$
 
 where $\varepsilon_\theta$ is a neural network that <font color="green">predicts the noise that was added.</font>
 
@@ -119,7 +119,7 @@ $$
 
 [Ho, Jain & Abbeel (2020)](https://arxiv.org/abs/2006.11239) has further simplified this loss to improved sample quality and simpler to implement for training.
 
-$$L_\mathrm{simple}(\theta) = \mathbb{E}_{t,x_0,\epsilon}\left[\left\|\epsilon - \epsilon_\theta\left(\sqrt{\bar\alpha_t}\,x_0 + \sqrt{1-\bar\alpha_t}\,\epsilon, t\right)\right\|^2\right]$$
+$$L_\mathrm{simple}(\theta) = \mathbb{E}_{t,x_0,\epsilon}\left[\left\|\epsilon - \epsilon_\theta\left(\sqrt{\bar\alpha_t}x_0 + \sqrt{1-\bar\alpha_t}\epsilon, t\right)\right\|^2\right]$$
 
 $$L_{\text{simple}}(\theta) = \mathbb{E}_{t,\, x_0,\, \varepsilon}\!\left[\left\| \varepsilon - \varepsilon_\theta(x_t, t) \right\|^2\right]$$
 
